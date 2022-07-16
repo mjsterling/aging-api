@@ -1,7 +1,6 @@
 package configs
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -14,7 +13,5 @@ func EnvMongoURI() string {
 		log.Fatal("Error loading .env file")
 	}
 
-	uri := os.Getenv("DB_URI")
-	fmt.Println(uri)
-	return uri
+	return os.Getenv("DB_URI")
 }
