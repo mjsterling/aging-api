@@ -10,8 +10,7 @@ import (
 func main() {
 	app := fiber.New()
 	configs.ConnectDB()
-
+	routes.LoginRoute(app)
 	routes.UserRoute(app)
-
 	app.Listen(":6000")
 }

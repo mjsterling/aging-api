@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"aging-app/auth"
 	"aging-app/configs"
 	"aging-app/models"
 	"aging-app/responses"
@@ -31,9 +32,15 @@ func CreateUser(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(responses.Response{Status: http.StatusBadRequest, Message: "error", Data: &fiber.Map{"data": validationErr.Error()}})
 	}
 
+	passHash, passError := auth.HashPassword(user.Password)
+	if passError != nil {
+		return c.Status(http.StatusInternalServerError).JSON(responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: &fiber.Map{"data": passError.Error()}})
+	}
+
 	newUser := models.User{
-		ID:    primitive.NewObjectID(),
-		Email: user.Email,
+		ID:       primitive.NewObjectID(),
+		Email:    user.Email,
+		Password: passHash,
 	}
 
 	result, err := userCollection.InsertOne(ctx, newUser)
