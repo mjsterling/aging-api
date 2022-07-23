@@ -3,7 +3,7 @@ package models
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Vessel struct {
-	ID        primitive.ObjectID `json:"_id,omitempty"`
+	Id        primitive.ObjectID `json:"_id,omitempty"`
 	Batches   []Batch            `json:"batches,omitempty"`
 	CreatedAt primitive.DateTime `json:"createdAt,omitempty" validate:"required"`
 	Volume    float32            `json:"volume,omitempty" validate:"required"`

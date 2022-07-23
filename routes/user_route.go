@@ -1,14 +1,14 @@
 package routes
 
 import (
-	"aging-app/controllers"
+	"aging-api/controllers"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gin-gonic/gin"
 )
 
-func UserRoute(app *fiber.App) {
-	app.Post("/user", controllers.CreateUser)
-	app.Get("/user/:id", controllers.GetUser)
-	app.Put("/user/:id", controllers.UpdateUser)
-	app.Delete("/user/:id", controllers.DeleteUser)
+func UserRoute(router *gin.Engine) {
+	router.GET("/api/v1/users", controllers.GetUser())
+	router.POST("/api/v1/users", controllers.CreateUser())
+	router.PUT("/api/v1/users/:id", controllers.UpdateUser())
+	router.DELETE("/api/v1/users/:id", controllers.DeleteUser())
 }

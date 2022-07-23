@@ -15,71 +15,36 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var vesselCollection *mongo.Collection = configs.GetCollection(configs.DB, "vessels")
-var validateVessel = validator.New()
-var _ = validateVessel.RegisterValidation(
-	"material",
-	func(fl validator.FieldLevel) bool {
-		if fl.Field().String() == "French Oak" {
-			return true
-		}
-		if fl.Field().String() == "American Oak" {
-			return true
-		}
-		if fl.Field().String() == "Stainless" {
-			return true
-		}
-		if fl.Field().String() == "Glass" {
-			return true
-		}
+var batchCollection *mongo.Collection = configs.GetCollection(configs.DB, "batches")
+var validateBatch = validator.New()
 
-		return false
-	},
-)
-var _ = validateVessel.RegisterValidation(
-	"process",
-	func(fl validator.FieldLevel) bool {
-		if fl.Field().String() == "Charred" {
-			return true
-		}
-		if fl.Field().String() == "Toasted" {
-			return true
-		}
-		if fl.Field().String() == "" {
-			return true
-		}
-
-		return false
-	},
-)
-
-func CreateVessel() gin.HandlerFunc {
+func CreateBatch() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		var vessel models.Vessel
+		var batch models.Batch
 		defer cancel()
 
-		if err := c.BindJSON(&vessel); err != nil {
+		if err := c.BindJSON(&batch); err != nil {
 			c.JSON(http.StatusBadRequest,
 				responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}},
 			)
+			return
 		}
 
-		if validationErr := validateVessel.Struct(&vessel); validationErr != nil {
+		if validationErr := validateBatch.Struct(&batch); validationErr != nil {
 			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}})
 			return
 		}
 
-		newVessel := models.Vessel{
-			Id:        primitive.NewObjectID(),
-			Batches:   vessel.Batches,
-			CreatedAt: primitive.NewDateTimeFromTime(time.Now()),
-			Volume:    vessel.Volume,
-			Material:  vessel.Material,
-			Process:   vessel.Process,
+		newBatch := models.Batch{
+			Id:           primitive.NewObjectID(),
+			Vessels:      batch.Vessels,
+			Measurements: batch.Measurements,
+			CreatedAt:    primitive.NewDateTimeFromTime(time.Now()),
+			Volume:       batch.Volume,
 		}
 
-		result, err := vesselCollection.InsertOne(ctx, newVessel)
+		result, err := batchCollection.InsertOne(ctx, newBatch)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
@@ -90,62 +55,62 @@ func CreateVessel() gin.HandlerFunc {
 	}
 }
 
-func GetVessel() gin.HandlerFunc {
+func GetBatch() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		vesselId := c.Param("id")
-		var vessel models.Vessel
+		batchId := c.Param("id")
+		var batch models.Batch
 		defer cancel()
 
-		objId, _ := primitive.ObjectIDFromHex(vesselId)
+		objId, _ := primitive.ObjectIDFromHex(batchId)
 
-		err := vesselCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&vessel)
+		err := batchCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&batch)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
-		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": vessel}})
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": batch}})
 		return
 	}
 }
 
-func UpdateVessel() gin.HandlerFunc {
+func UpdateBatch() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		vesselId := c.Param("id")
-		var vessel models.Vessel
+		batchId := c.Param("id")
+		var batch models.Batch
 		defer cancel()
 
-		objId, _ := primitive.ObjectIDFromHex(vesselId)
+		objId, _ := primitive.ObjectIDFromHex(batchId)
 
-		if err := c.BindJSON(&vessel); err != nil {
+		if err := c.BindJSON(&batch); err != nil {
 			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
-		if validationErr := validateVessel.Struct(&vessel); validationErr != nil {
+		if validationErr := validateBatch.Struct(&batch); validationErr != nil {
 			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}})
 			return
 		}
 
 		update := bson.M{
-			"Volume":   vessel.Volume,
-			"Material": vessel.Material,
-			"Process":  vessel.Process,
+			"Vessels":      batch.Vessels,
+			"Measurements": batch.Measurements,
+			"Volume":       batch.Volume,
 		}
 
-		result, err := vesselCollection.UpdateOne(ctx, bson.M{"_id": objId}, bson.M{"$set": update})
+		result, err := batchCollection.UpdateOne(ctx, bson.M{"_id": objId}, bson.M{"$set": update})
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
-		var updatedVessel models.Vessel
+		var updatedBatch models.Batch
 
 		if result.MatchedCount == 1 {
-			err := vesselCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&updatedVessel)
+			err := batchCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&updatedBatch)
 
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
@@ -153,21 +118,21 @@ func UpdateVessel() gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": updatedVessel}})
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": updatedBatch}})
 		return
 
 	}
 }
 
-func DeleteVessel() gin.HandlerFunc {
+func DeleteBatch() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		vesselId := c.Param("id")
+		batchId := c.Param("id")
 		defer cancel()
 
-		objId, _ := primitive.ObjectIDFromHex(vesselId)
+		objId, _ := primitive.ObjectIDFromHex(batchId)
 
-		result, err := vesselCollection.DeleteOne(ctx, bson.M{"_id": objId})
+		result, err := batchCollection.DeleteOne(ctx, bson.M{"_id": objId})
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
@@ -175,12 +140,12 @@ func DeleteVessel() gin.HandlerFunc {
 		}
 
 		if result.DeletedCount < 1 {
-			c.JSON(http.StatusNotFound, responses.Response{Status: http.StatusNotFound, Message: "error", Data: map[string]interface{}{"data": "vessel not found"}})
+			c.JSON(http.StatusNotFound, responses.Response{Status: http.StatusNotFound, Message: "error", Data: map[string]interface{}{"data": "batch not found"}})
 			return
 		}
 
 		c.JSON(http.StatusOK,
-			responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": "vessel deleted"}},
+			responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": "batch deleted"}},
 		)
 		return
 	}

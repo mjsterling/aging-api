@@ -3,7 +3,7 @@ package models
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Spirit struct {
-	ID         primitive.ObjectID `json:"_id,omitempty"`
+	Id         primitive.ObjectID `json:"_id,omitempty"`
 	CreatedAt  primitive.DateTime `json:"createdAt,omitempty" validate:"required"`
 	Batches    []Batch            `json:"batches,omitempty"`
 	Volume     float32            `json:"volume,omitempty" validate:"required"`

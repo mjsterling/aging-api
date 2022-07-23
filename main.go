@@ -1,16 +1,17 @@
 package main
 
 import (
-	"aging-app/configs"
-	"aging-app/routes"
+	"aging-api/routes"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	app := fiber.New()
-	configs.ConnectDB()
-	routes.LoginRoute(app)
-	routes.UserRoute(app)
-	app.Listen(":6000")
+	router := gin.Default()
+	routes.AuthRoute(router)
+	routes.MeasurementRoute(router)
+	routes.SpiritRoute(router)
+	routes.UserRoute(router)
+	routes.VesselRoute(router)
+	router.Run()
 }
