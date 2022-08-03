@@ -7,7 +7,8 @@ import (
 )
 
 func SpiritRoute(router *gin.Engine) {
-	router.GET("/api/v1/spirits", controllers.GetSpirit())
+	router.GET("/api/v1/spirits", controllers.GetAllSpirits())
+	router.GET("/api/v1/spirits/:id", controllers.GetSpiritById())
 	router.POST("/api/v1/spirits", controllers.CreateSpirit())
 	router.PUT("/api/v1/spirits/:id", controllers.UpdateSpirit())
 	router.DELETE("/api/v1/spirits/:id", controllers.DeleteSpirit())

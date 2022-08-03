@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"aging-api/api"
+	"net/http"
 	"os"
+	"regexp"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -46,4 +50,27 @@ func DecodeJwt(tokenString string) (string, error) {
 	}
 
 	return "", nil
+}
+
+func Authenticate(c *gin.Context) bool {
+	authHeader := c.Request.Header["Authorization"]
+	if authHeader == nil {
+		api.Respond(c,
+			http.StatusUnauthorized,
+			"Error: No JWT header present",
+			"Error: No JWT header present",
+		)
+		return false
+	}
+	r := regexp.MustCompile("Bearer (.+)")
+	jwt := r.FindStringSubmatch(authHeader[0])
+	_, err := DecodeJwt(jwt[1])
+	if err != nil {
+		api.Respond(c,
+			http.StatusUnauthorized,
+			"Error: JWT not valid",
+			"Error: JWT not valid",
+		)
+	}
+	return true
 }

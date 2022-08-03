@@ -58,7 +58,32 @@ func CreateSpirit() gin.HandlerFunc {
 	}
 }
 
-func GetSpirit() gin.HandlerFunc {
+func GetAllSpirits() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		cur, err := userCollection.Find(ctx, bson.D{})
+		results := make([]interface{}, 0)
+		for cur.Next(ctx) {
+			var result bson.D
+			if err := cur.Decode(&result); err != nil {
+				c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+				return
+			}
+			results = append(results, result)
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"spirits": results}})
+		return
+	}
+}
+
+func GetSpiritById() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		spiritId := c.Param("id")

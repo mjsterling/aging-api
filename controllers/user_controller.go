@@ -6,6 +6,7 @@ import (
 	"aging-api/models"
 	"aging-api/responses"
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -26,30 +27,37 @@ func CreateUser() gin.HandlerFunc {
 		defer cancel()
 
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "request error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
 		if validationErr := validate.Struct(&user); validationErr != nil {
-			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}})
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "validation error", Data: map[string]interface{}{"data": validationErr.Error()}})
+			return
+		}
+
+		err := userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&user)
+		if err == nil {
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "User account already exists", Data: map[string]interface{}{"data": "User account already exists"}})
 			return
 		}
 
 		passHash, passError := auth.HashPassword(user.Password)
 		if passError != nil {
-			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": passError.Error()}})
+			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "password hashing error", Data: map[string]interface{}{"data": passError.Error()}})
 			return
 		}
 
 		newUser := models.User{
-			Id:       primitive.NewObjectID(),
-			Email:    user.Email,
-			Password: passHash,
+			Id:        primitive.NewObjectID(),
+			CreatedAt: primitive.NewDateTimeFromTime(time.Now()),
+			Email:     user.Email,
+			Password:  passHash,
 		}
 
 		result, err := userCollection.InsertOne(ctx, newUser)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "insert error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
@@ -58,22 +66,30 @@ func CreateUser() gin.HandlerFunc {
 	}
 }
 
-func GetUser() gin.HandlerFunc {
+func GetAllUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		userId := c.Param("id")
-		var user models.User
 		defer cancel()
 
-		objId, _ := primitive.ObjectIDFromHex(userId)
+		if !auth.Authenticate(c) {
+			return
+		}
 
-		err := userCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&user)
+		cur, err := userCollection.Find(ctx, bson.D{})
+		results := make([]interface{}, 0)
+		for cur.Next(ctx) {
+			var result bson.D
+			if err := cur.Decode(&result); err != nil {
+				log.Fatal(err)
+			}
+			results = append(results, result)
+		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
 			return
 		}
 
-		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": user}})
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"users": results}})
 		return
 	}
 }

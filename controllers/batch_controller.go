@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"aging-api/api"
 	"aging-api/configs"
 	"aging-api/models"
 	"aging-api/responses"
@@ -25,14 +26,12 @@ func CreateBatch() gin.HandlerFunc {
 		defer cancel()
 
 		if err := c.BindJSON(&batch); err != nil {
-			c.JSON(http.StatusBadRequest,
-				responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}},
-			)
+			api.Respond(c, http.StatusBadRequest, "error", err.Error())
 			return
 		}
 
 		if validationErr := validateBatch.Struct(&batch); validationErr != nil {
-			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}})
+			api.Respond(c, http.StatusBadRequest, "error", validationErr.Error())
 			return
 		}
 
@@ -46,11 +45,11 @@ func CreateBatch() gin.HandlerFunc {
 
 		result, err := batchCollection.InsertOne(ctx, newBatch)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}})
+			api.Respond(c, http.StatusInternalServerError, "error", err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, responses.Response{Status: http.StatusCreated, Message: "success", Data: map[string]interface{}{"data": result.InsertedID}})
+		api.Respond(c, http.StatusCreated, "success", result.InsertedID)
 		return
 	}
 }
